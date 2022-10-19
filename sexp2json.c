@@ -20,10 +20,36 @@ static void fail(char const * file, int line, char const * fmt, ...)
     exit(1);
 }
 
+static void skip_whitespace()
+{
+}
+
+static bool at_eof()
+{
+    FILE * in = stdin;
+    int ch = getc(in);
+    if (ch == -1)
+    {
+        return true;
+    }
+    ungetc(ch, in);
+    return false;
+}
+
+static Expr read_expr()
+{
+    return nil;
+}
+
 static bool maybe_read_expr(Expr * pexp)
 {
-    *pexp = nil;
-    return false;
+    skip_whitespace();
+    if (at_eof())
+    {
+        return false;
+    }
+    *pexp = read_expr();
+    return true;
 }
 
 static void render_expr(Expr exp)

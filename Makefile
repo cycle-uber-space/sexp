@@ -6,7 +6,7 @@
 
 CFLAGS = -std=c99 -Wall -Wextra -Wno-unused-parameter -g -Os
 
-all: json2sexp sexp2json test/sexp2json/hello.json
+all: json2sexp sexp2json test/sexp2json/hello.json test/sexp2json/nil.json
 
 clean:
 	rm -f json2sexp sexp2json

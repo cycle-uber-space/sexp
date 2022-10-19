@@ -30,6 +30,13 @@ static void render_expr(Expr exp)
 {
     switch (expr_type(exp))
     {
+    case TYPE_NIL:
+        if (is_nil(exp))
+        {
+            printf("null");
+            break;
+        }
+        /* fall-through */
     default:
         FAIL("cannot render expression of type %" PRIx64 "\n", expr_type(exp));
         break;

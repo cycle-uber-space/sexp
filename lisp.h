@@ -6,9 +6,19 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifndef DEBUG
+#define DEBUG 1
+#endif
+
 #define FAIL(...) fail(__FILE__, __LINE__, __VA_ARGS__)
 
 #define ASSERT(x) do { if (!(x)) { fail(__FILE__, __LINE__, "assertion failed: %s\n", #x); } } while (0)
+
+#if DEBUG
+#define ASSERT_DEBUG(x) ASSERT(x)
+#else
+#define ASSERT_DEBUG(x) ((void) x)
+#endif
 
 typedef uint64_t u64;
 
@@ -24,7 +34,7 @@ enum
 {
     TYPE_NIL = 0,
     TYPE_SYMBOL,
-    TYPE_CONS,
+    TYPE_PAIR,
     TYPE_STRING,
 };
 
@@ -48,10 +58,17 @@ inline static bool is_symbol(Expr exp)
 Expr make_symbol(char const * name);
 char const * symbol_name(Expr exp);
 
-inline static bool is_cons(Expr exp)
+inline static bool is_pair(Expr exp)
 {
-    return expr_type(exp) == TYPE_CONS;
+    return expr_type(exp) == TYPE_PAIR;
 }
+
+Expr make_pair(Expr a, Expr b);
+Expr pair_first(Expr exp);
+Expr pair_second(Expr exp);
+
+void pair_set_first(Expr exp, Expr val);
+void pair_set_second(Expr exp, Expr val);
 
 inline static bool is_string(Expr exp)
 {
@@ -59,6 +76,13 @@ inline static bool is_string(Expr exp)
 }
 
 Expr intern(char const * name);
+
+Expr cons(Expr a, Expr b);
+Expr car(Expr exp);
+Expr cdr(Expr exp);
+
+void rplaca(Expr exp, Expr val);
+void rplacd(Expr exp, Expr val);
 
 #endif /* _LISP_H_ */
 
@@ -135,6 +159,53 @@ char const * symbol_name(Expr exp)
     return g_symbol_names[index];
 }
 
+typedef struct
+{
+    Expr first, second;
+} Pair;
+
+#define MAX_PAIRS 1000
+
+Pair g_pairs[MAX_PAIRS];
+u64 g_num_pairs = 0;
+
+Expr make_pair(Expr a, Expr b)
+{
+    ASSERT(g_num_pairs < MAX_PAIRS);
+    u64 const index = g_num_pairs++;
+    g_pairs[index].first = a;
+    g_pairs[index].second = b;
+    return make_expr(TYPE_PAIR, index);
+}
+
+static u64 _pair_index(Expr exp)
+{
+    ASSERT(is_pair(exp));
+    u64 const index = expr_data(exp);
+    ASSERT(index < g_num_pairs);
+    return index;
+}
+
+Expr pair_first(Expr exp)
+{
+    return g_pairs[_pair_index(exp)].first;
+}
+
+Expr pair_second(Expr exp)
+{
+    return g_pairs[_pair_index(exp)].second;
+}
+
+void pair_set_first(Expr exp, Expr val)
+{
+    g_pairs[_pair_index(exp)].first = val;
+}
+
+void pair_set_second(Expr exp, Expr val)
+{
+    g_pairs[_pair_index(exp)].second = val;
+}
+
 Expr intern(char const * name)
 {
     if (!strcmp("nil", name))
@@ -145,6 +216,45 @@ Expr intern(char const * name)
     {
         return make_symbol(name);
     }
+}
+
+Expr cons(Expr a, Expr b)
+{
+    return make_pair(a, b);
+}
+
+Expr car(Expr exp)
+{
+    if (is_nil(exp))
+    {
+        return exp;
+    }
+    else
+    {
+        return pair_first(exp);
+    }
+}
+
+Expr cdr(Expr exp)
+{
+    if (is_nil(exp))
+    {
+        return exp;
+    }
+    else
+    {
+        return pair_second(exp);
+    }
+}
+
+void rplaca(Expr exp, Expr val)
+{
+    pair_set_first(exp, val);
+}
+
+void rplacd(Expr exp, Expr val)
+{
+    pair_set_second(exp, val);
 }
 
 #endif /* _LISP_C_ */

@@ -44,8 +44,38 @@ static Expr read_expr();
 
 static Expr read_list()
 {
+    ASSERT(peek() == '(');
     (void) next();
-    return nil;
+
+    Expr head = nil, tail = nil;
+    while (true)
+    {
+        skip_whitespace();
+        int ch = peek();
+        if (ch == -1)
+        {
+            FAIL("unexpected end of stream\n");
+            return nil;
+        }
+        else if (ch == ')')
+        {
+            break;
+        }
+        else
+        {
+            Expr next = cons(read_expr(), nil);
+            if (head)
+            {
+                rplacd(tail, next);
+                tail = next;
+            }
+            else
+            {
+                head = tail = next;
+            }
+        }
+    }
+    return head;
 }
 
 static Expr read_symbol()
@@ -107,20 +137,68 @@ static bool maybe_read_expr(Expr * pexp)
     return true;
 }
 
+static void render_expr(Expr exp);
+
+static void render_nil(Expr exp)
+{
+    if (is_nil(exp))
+    {
+        printf("null");
+    }
+    else
+    {
+        FAIL("cannot render expression of type %" PRIx64 "\n", expr_type(exp));
+    }
+}
+
+static void render_symbol(Expr exp)
+{
+    ASSERT_DEBUG(is_symbol(exp));
+    printf("%s", symbol_name(exp));
+}
+
+static void render_pair(Expr exp)
+{
+    ASSERT_DEBUG(is_pair(exp));
+    Expr head = car(exp);
+    if (head == intern("object"))
+    {
+        // TODO
+        printf("{...}");
+    }
+    else if (head == intern("array"))
+    {
+        printf("[");
+        render_expr(head);
+        for (Expr iter = cdr(exp); iter; iter = cdr(iter))
+        {
+            printf(", ");
+            if (is_pair(iter))
+            {
+                render_expr(car(iter));
+            }
+            else
+            {
+                FAIL("cannot map dotted list to json\n");
+                break;
+            }
+        }
+        printf("]");
+    }
+}
+
 static void render_expr(Expr exp)
 {
     switch (expr_type(exp))
     {
     case TYPE_NIL:
-        if (is_nil(exp))
-        {
-            printf("null");
-            break;
-        }
-        FAIL("cannot render expression of type %" PRIx64 "\n", expr_type(exp));
+        render_nil(exp);
         break;
     case TYPE_SYMBOL:
-        printf("%s", symbol_name(exp));
+        render_symbol(exp);
+        break;
+    case TYPE_PAIR:
+        render_pair(exp);
         break;
     default:
         FAIL("cannot render expression of type %" PRIx64 "\n", expr_type(exp));

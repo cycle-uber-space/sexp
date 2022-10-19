@@ -78,7 +78,7 @@ static Expr read_symbol()
 
     ASSERT(pout - buffer < 4096);
     *pout++ = 0;
-    fprintf(stderr, "%s\n", buffer);
+    //fprintf(stderr, "%s\n", buffer);
 
     return intern(buffer);
 }

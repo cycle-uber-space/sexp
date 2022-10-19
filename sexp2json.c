@@ -1,24 +1,8 @@
 
 #include "lisp.h"
 
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 #include <inttypes.h>
-
-#define FAIL(...) fail(__FILE__, __LINE__, __VA_ARGS__)
-
-static void fail(char const * file, int line, char const * fmt, ...)
-{
-    FILE * out = stderr;
-    fprintf(out, "%s:%d: [FAIL] ", file, line);
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(out, fmt, args);
-    va_end(args);
-    exit(1);
-}
 
 static bool is_whitespace(int ch)
 {
@@ -33,9 +17,9 @@ static int peek()
     return ch;
 }
 
-static void next()
+static int next()
 {
-    (void) getc(stdin);
+    return getc(stdin);
 }
 
 static bool at_whitespace()
@@ -47,7 +31,7 @@ static void skip_whitespace()
 {
     while (at_whitespace())
     {
-        next();
+        (void) next();
     }
 }
 
@@ -60,14 +44,43 @@ static Expr read_expr();
 
 static Expr read_list()
 {
-    next();
+    (void) next();
     return nil;
 }
 
 static Expr read_symbol()
 {
-    next();
-    return nil;
+    char buffer[4096];
+    char * pout = buffer;
+    //fprintf(stderr, "%c", peek());
+    while (true)
+    {
+        int ch = peek();
+        if (ch == -1)
+        {
+            break;
+        }
+        else if (is_whitespace(ch))
+        {
+            break;
+        }
+        else if (ch == '(' || ch == ')')
+        {
+            break;
+        }
+        else
+        {
+            //fprintf(stderr, "%c", peek());
+            ASSERT(pout - buffer < 4096);
+            *pout++ = next();
+        }
+    }
+
+    ASSERT(pout - buffer < 4096);
+    *pout++ = 0;
+    fprintf(stderr, "%s\n", buffer);
+
+    return intern(buffer);
 }
 
 static Expr read_expr()
@@ -104,7 +117,11 @@ static void render_expr(Expr exp)
             printf("null");
             break;
         }
-        /* fall-through */
+        FAIL("cannot render expression of type %" PRIx64 "\n", expr_type(exp));
+        break;
+    case TYPE_SYMBOL:
+        printf("%s", symbol_name(exp));
+        break;
     default:
         FAIL("cannot render expression of type %" PRIx64 "\n", expr_type(exp));
         break;

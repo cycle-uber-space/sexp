@@ -20,20 +20,21 @@ static void fail(char const * file, int line, char const * fmt, ...)
     exit(1);
 }
 
+static int peek()
+{
+    FILE * in = stdin;
+    int ch = getc(in);
+    ungetc(ch, in);
+    return ch;
+}
+
 static void skip_whitespace()
 {
 }
 
 static bool at_eof()
 {
-    FILE * in = stdin;
-    int ch = getc(in);
-    if (ch == -1)
-    {
-        return true;
-    }
-    ungetc(ch, in);
-    return false;
+    return peek() == -1;
 }
 
 static Expr read_expr()

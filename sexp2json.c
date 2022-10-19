@@ -20,6 +20,11 @@ static void fail(char const * file, int line, char const * fmt, ...)
     exit(1);
 }
 
+static bool is_whitespace(int ch)
+{
+    return ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r';
+}
+
 static int peek()
 {
     FILE * in = stdin;
@@ -28,8 +33,22 @@ static int peek()
     return ch;
 }
 
+static void next()
+{
+    (void) getc(stdin);
+}
+
+static bool at_whitespace()
+{
+    return is_whitespace(peek());
+}
+
 static void skip_whitespace()
 {
+    while (at_whitespace())
+    {
+        next();
+    }
 }
 
 static bool at_eof()
@@ -37,8 +56,30 @@ static bool at_eof()
     return peek() == -1;
 }
 
+static Expr read_expr();
+
+static Expr read_list()
+{
+    next();
+    return nil;
+}
+
+static Expr read_symbol()
+{
+    next();
+    return nil;
+}
+
 static Expr read_expr()
 {
+    skip_whitespace();
+    switch (peek())
+    {
+    case '(':
+        return read_list();
+    default:
+        return read_symbol();
+    }
     return nil;
 }
 

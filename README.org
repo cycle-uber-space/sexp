@@ -1,0 +1,18 @@
+
+* sexp -- utilities for s-expressions
+
+JSON values are mapped to LISP types thusly:
+- object => (dict ...) (object ...)
+- array => (list ...) (array ...)
+- null => nil
+- string => string
+- number => symbol
+- true | false => symbol
+
+** sexp2json
+
+converts a stream of s-expressions from stdin to json on stdout
+
+** sexp2json
+
+converts a stream of json values from stdin to s-expressions on stdout

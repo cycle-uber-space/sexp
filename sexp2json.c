@@ -226,11 +226,9 @@ static void render_pair(Expr exp)
                 Expr val = cadr(rest);
                 if (is_keyword(key))
                 {
-                    emit_char('"');
+                    emit_str("\"");
                     emit_str(keyword_name(key));
-                    emit_char('"');
-                    emit_char(':');
-                    emit_char(' ');
+                    emit_str("\": ");
                 }
                 else
                 {
@@ -245,8 +243,7 @@ static void render_pair(Expr exp)
                 emit_char('\n');
             }
             dedent();
-            emit_char('}');
-            emit_char('\n');
+            emit_str("}\n");
         }
         else
         {

@@ -9,17 +9,25 @@ static bool is_whitespace(int ch)
     return ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r';
 }
 
+static int peek_ch = -1;
+
 static int peek()
 {
-    FILE * in = stdin;
-    int ch = getc(in);
-    ungetc(ch, in);
-    return ch;
+    if (peek_ch == -1)
+    {
+        FILE * in = stdin;
+        peek_ch = getc(in);
+        ungetc(peek_ch, in);
+    }
+    //fprintf(stderr, "peek: '%c' (%d)\n", peek_ch, peek_ch);
+    return peek_ch;
 }
 
-static int next()
+static void advance()
 {
-    return getc(stdin);
+    (void) getc(stdin);
+    //fprintf(stderr, "advance: '%c' (%d)\n", ch, ch);
+    peek_ch = -1;
 }
 
 static bool at_whitespace()
@@ -31,7 +39,7 @@ static void skip_whitespace()
 {
     while (at_whitespace())
     {
-        (void) next();
+        (void) advance();
     }
 }
 
@@ -63,26 +71,29 @@ static Expr read_expr();
 
 static Expr read_list()
 {
+    //fprintf(stderr, "%s()\n", __FUNCTION__);
     ASSERT(peek() == '(');
-    (void) next();
+    (void) advance();
 
     Expr head = nil, tail = nil;
     while (true)
     {
         skip_whitespace();
         int ch = peek();
-        if (ch == -1)
+        if (ch == ')')
         {
-            FAIL("unexpected end of stream\n");
-            return nil;
-        }
-        else if (ch == ')')
-        {
+            (void) advance();
             break;
+        }
+        else if (ch == -1)
+        {
+            FAIL("unexpected end of stream in %s()\n", __FUNCTION__);
+            return nil;
         }
         else
         {
-            Expr next = cons(read_expr(), nil);
+            Expr exp = read_expr();
+            Expr next = cons(exp, nil);
             if (head)
             {
                 rplacd(tail, next);
@@ -97,16 +108,20 @@ static Expr read_list()
     return head;
 }
 
-static void _store(size_t size, char * buffer, char ch, char ** ppout)
+static char * _store(size_t size, char * buffer, char ch, char * pout)
 {
-    char * pout = *ppout;
-    ASSERT(pout - buffer < 4096);
-    *pout++ = next();
-    *ppout = pout;
+    //fprintf(stderr, "STORE: %c (%d)\n", ch, ch);
+    ASSERT((size_t) (pout - buffer) < size);
+    *pout++ = ch;
+    return pout;
 }
 
-static Expr read_symbol()
+static Expr read_string()
 {
+    //fprintf(stderr, "%s()\n", __FUNCTION__);
+    ASSERT(peek() == '"');
+    (void) advance();
+
     char buffer[4096];
     char * pout = buffer;
     //fprintf(stderr, "%c", peek());
@@ -115,44 +130,114 @@ static Expr read_symbol()
         int ch = peek();
         if (ch == -1)
         {
-            break;
-        }
-        else if (is_whitespace(ch))
-        {
-            break;
-        }
-        else if (ch == '(' || ch == ')')
-        {
-            break;
+            FAIL("unexpected end of stream in %s()\n", __FUNCTION__);
+            return nil;
         }
         else if (ch == '"')
         {
             break;
         }
+        else if (ch == '\\')
+        {
+            advance();
+            ch = peek();
+            switch (ch)
+            {
+            case '\\':
+                pout = _store(4096, buffer, '\\', pout);
+                advance();
+                break;
+            case '"':
+                pout = _store(4096, buffer, '"', pout);
+                advance();
+                break;
+            default:
+                FAIL("illegal escape sequence %c\n", ch);
+                return nil;
+            }
+        }
         else
         {
             //fprintf(stderr, "%c", peek());
-            _store(4096, buffer, next(), &pout);
+            pout = _store(4096, buffer, ch, pout);
+            advance();
         }
     }
 
-    _store(4096, buffer, '\0', &pout);
+    ASSERT(peek() == '"');
+    (void) advance();
+
+    pout = _store(4096, buffer, '\0', pout);
     //fprintf(stderr, "%s\n", buffer);
+
+    return make_string(buffer);
+}
+
+static bool is_symbol_char(int ch)
+{
+    if (ch == -1)
+    {
+        return false;
+    }
+
+    if (is_whitespace(ch))
+    {
+        return false;
+    }
+
+    if (ch == '(' || ch == ')')
+    {
+        return false;
+    }
+
+    if (ch == '"')
+    {
+        return false;
+    }
+
+    return true;
+}
+
+static Expr read_symbol()
+{
+    //fprintf(stderr, "%s()\n", __FUNCTION__);
+    char buffer[4096];
+    char * pout = buffer;
+    //fprintf(stderr, "%c", peek());
+    while (is_symbol_char(peek()))
+    {
+        int ch = peek();
+        advance();
+        //fprintf(stderr, "%c\n", ch);
+        pout = _store(4096, buffer, ch, pout);
+    }
+
+    pout = _store(4096, buffer, '\0', pout);
+
+    //fprintf(stderr, "BUFFER: %s\n", buffer);
 
     return intern(buffer);
 }
 
 static Expr read_expr()
 {
+    //fprintf(stderr, "%s()\n", __FUNCTION__);
+    Expr ret = nil;
     skip_whitespace();
     switch (peek())
     {
     case '(':
-        return read_list();
+        ret = read_list();
+        break;
+    case '"':
+        ret = read_string();
+        break;
     default:
-        return read_symbol();
+        ret = read_symbol();
+        break;
     }
-    return nil;
+    //fprintf(stderr, "READ => %016" PRIx64 " (%s)\n", ret, expr_type_name(ret));
+    return ret;
 }
 
 static bool maybe_read_expr(Expr * pexp)
@@ -281,27 +366,65 @@ static void render_pair(Expr exp)
     }
     else if (head == intern("array"))
     {
-        emit_char('[');
-        render_expr(head);
-        for (Expr iter = cdr(exp); iter; iter = cdr(iter))
+        Expr rest = cdr(exp);
+        if (rest)
         {
-            emit_str(", ");
-            if (is_pair(iter))
+            emit_str("[\n");
+            indent();
+            for (Expr iter = rest; iter; iter = cdr(iter))
             {
-                render_expr(car(iter));
+                if (is_pair(iter))
+                {
+                    render_expr(car(iter));
+                }
+                else
+                {
+                    FAIL("cannot map dotted list to json\n");
+                    break;
+                }
+                if (cdr(iter))
+                {
+                    emit_str(", ");
+                }
             }
-            else
-            {
-                FAIL("cannot map dotted list to json\n");
-                break;
-            }
+            dedent();
+            emit_str("\n]");
         }
-        emit_char(']');
+        else
+        {
+            emit_str("[]");
+        }
     }
     else
     {
         FAIL("cannot render pair %016" PRIx64 "\n", exp);
     }
+}
+
+static void render_string(Expr exp)
+{
+    ASSERT_DEBUG(is_string(exp));
+    char const * str = string_value(exp);
+    emit_char('"');
+    for (char const * p = str; *p; p++)
+    {
+        char const ch = *p;
+        switch (ch)
+        {
+        case '\\':
+            emit_char('\\');
+            emit_char('\\');
+            break;
+        case '"':
+            emit_char('\\');
+            emit_char('"');
+            break;
+        default:
+            emit_char(ch);
+            break;
+        }
+    }
+    emit_char('"');
 }
 
 static void render_expr(Expr exp)
@@ -319,6 +442,9 @@ static void render_expr(Expr exp)
         break;
     case TYPE_PAIR:
         render_pair(exp);
+        break;
+    case TYPE_STRING:
+        render_string(exp);
         break;
     default:
         FAIL("cannot render expression of type %s\n", expr_type_name(exp));

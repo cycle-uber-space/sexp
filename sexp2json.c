@@ -40,6 +40,25 @@ static bool at_eof()
     return peek() == -1;
 }
 
+char const * expr_type_name(Expr exp)
+{
+    switch (expr_type(exp))
+    {
+    case TYPE_NIL:
+        return "nil";
+    case TYPE_SYMBOL:
+        return "symbol";
+    case TYPE_KEYWORD:
+        return "keyword";
+    case TYPE_PAIR:
+        return "pair";
+    case TYPE_STRING:
+        return "string";
+    default:
+        return "#:<unknown>";
+    }
+}
+
 static Expr read_expr();
 
 static Expr read_list()
@@ -145,23 +164,6 @@ static bool maybe_read_expr(Expr * pexp)
     }
     *pexp = read_expr();
     return true;
-}
-
-char const * expr_type_name(Expr exp)
-{
-    switch (expr_type(exp))
-    {
-    case TYPE_NIL:
-        return "nil";
-    case TYPE_SYMBOL:
-        return "symbol";
-    case TYPE_KEYWORD:
-        return "keyword";
-    case TYPE_PAIR:
-        return "pair";
-    default:
-        return "#:<unknown>";
-    }
 }
 
 static void render_expr(Expr exp);

@@ -332,10 +332,21 @@ static void render_pair(Expr exp)
         Expr rest = cdr(exp);
         if (rest)
         {
-            emit_str("{\n");
+            emit_str("{");
             indent();
+            bool first = true;
             while (rest)
             {
+                if (first)
+                {
+                    first = false;
+                }
+                else
+                {
+                    emit_char(',');
+                }
+                emit_char('\n');
+
                 Expr key = car(rest);
                 Expr val = cadr(rest);
                 if (is_keyword(key))
@@ -350,14 +361,10 @@ static void render_pair(Expr exp)
                 }
                 render_expr(val);
                 rest = cddr(rest);
-                if (rest)
-                {
-                    emit_char(',');
-                }
-                emit_char('\n');
             }
             dedent();
-            emit_str("}\n");
+            emit_char('\n');
+            emit_str("}");
         }
         else
         {

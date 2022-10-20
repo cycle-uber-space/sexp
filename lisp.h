@@ -34,6 +34,7 @@ enum
 {
     TYPE_NIL = 0,
     TYPE_SYMBOL,
+    TYPE_KEYWORD,
     TYPE_PAIR,
     TYPE_STRING,
 };
@@ -57,6 +58,14 @@ inline static bool is_symbol(Expr exp)
 
 Expr make_symbol(char const * name);
 char const * symbol_name(Expr exp);
+
+inline static bool is_keyword(Expr exp)
+{
+    return expr_type(exp) == TYPE_KEYWORD;
+}
+
+Expr make_keyword(char const * name);
+char const * keyword_name(Expr exp);
 
 inline static bool is_pair(Expr exp)
 {
@@ -83,6 +92,16 @@ Expr cdr(Expr exp);
 
 void rplaca(Expr exp, Expr val);
 void rplacd(Expr exp, Expr val);
+
+inline static Expr cadr(Expr exp)
+{
+    return car(cdr(exp));
+}
+
+inline static Expr cddr(Expr exp)
+{
+    return cdr(cdr(exp));
+}
 
 #endif /* _LISP_H_ */
 
@@ -159,6 +178,42 @@ char const * symbol_name(Expr exp)
     return g_symbol_names[index];
 }
 
+#define MAX_KEYWORDS 100
+
+static char * g_keyword_names[MAX_KEYWORDS];
+static u64 g_keyword_count = 0;
+
+Expr make_keyword(char const * name)
+{
+    u64 index;
+    for (index = 0; index < g_keyword_count; index++)
+    {
+        if (!strcmp(g_keyword_names[index], name))
+        {
+            break;
+        }
+    }
+
+    if (index == g_keyword_count)
+    {
+        ASSERT(g_keyword_count < MAX_KEYWORDS);
+        size_t len = strlen(name);
+        char * copy = (char *) malloc(len + 1);
+        memcpy(copy, name, len + 1);
+        g_keyword_names[g_keyword_count++] = copy;
+    }
+
+    return make_expr(TYPE_KEYWORD, index);
+}
+
+char const * keyword_name(Expr exp)
+{
+    ASSERT(is_keyword(exp));
+    u64 const index = expr_data(exp);
+    ASSERT(index < g_keyword_count);
+    return g_keyword_names[index];
+}
+
 typedef struct
 {
     Expr first, second;
@@ -211,6 +266,10 @@ Expr intern(char const * name)
     if (!strcmp("nil", name))
     {
         return nil;
+    }
+    else if (name[0] == ':' && name[1] != '\0')
+    {
+        return make_keyword(name + 1);
     }
     else
     {

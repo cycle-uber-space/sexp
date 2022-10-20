@@ -6,7 +6,10 @@
 
 CFLAGS = -std=c99 -Wall -Wextra -Wno-unused-parameter -g -Os
 
-all: json2sexp sexp2json test/sexp2json/hello.json test/sexp2json/nil.json
+SEXP2JSON_IN = $(wildcard test/sexp2json/*.sexp)
+SEXP2JSON_OUT = $(SEXP2JSON_IN:%.sexp=%.json)
+
+all: json2sexp sexp2json $(SEXP2JSON_OUT)
 
 clean:
 	rm -f json2sexp sexp2json

@@ -137,6 +137,23 @@ static bool maybe_read_expr(Expr * pexp)
     return true;
 }
 
+char const * expr_type_name(Expr exp)
+{
+    switch (expr_type(exp))
+    {
+    case TYPE_NIL:
+        return "nil";
+    case TYPE_SYMBOL:
+        return "symbol";
+    case TYPE_KEYWORD:
+        return "keyword";
+    case TYPE_PAIR:
+        return "pair";
+    default:
+        return "#:<unknown>";
+    }
+}
+
 static void render_expr(Expr exp);
 
 int g_indent = 0;
@@ -232,7 +249,7 @@ static void render_pair(Expr exp)
                 }
                 else
                 {
-                    FAIL("cannot render object key of type %" PRIx64 "\n", expr_type(key));
+                    FAIL("cannot render object key of type %s\n", expr_type_name(key));
                 }
                 render_expr(val);
                 rest = cddr(rest);
@@ -292,7 +309,7 @@ static void render_expr(Expr exp)
         render_pair(exp);
         break;
     default:
-        FAIL("cannot render expression of type %" PRIx64 "\n", expr_type(exp));
+        FAIL("cannot render expression of type %s\n", expr_type_name(exp));
         break;
     }
 }

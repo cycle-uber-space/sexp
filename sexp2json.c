@@ -78,6 +78,14 @@ static Expr read_list()
     return head;
 }
 
+static void _store(size_t size, char * buffer, char ch, char ** ppout)
+{
+    char * pout = *ppout;
+    ASSERT(pout - buffer < 4096);
+    *pout++ = next();
+    *ppout = pout;
+}
+
 static Expr read_symbol()
 {
     char buffer[4096];
@@ -98,16 +106,18 @@ static Expr read_symbol()
         {
             break;
         }
+        else if (ch == '"')
+        {
+            break;
+        }
         else
         {
             //fprintf(stderr, "%c", peek());
-            ASSERT(pout - buffer < 4096);
-            *pout++ = next();
+            _store(4096, buffer, next(), &pout);
         }
     }
 
-    ASSERT(pout - buffer < 4096);
-    *pout++ = 0;
+    _store(4096, buffer, '\0', &pout);
     //fprintf(stderr, "%s\n", buffer);
 
     return intern(buffer);

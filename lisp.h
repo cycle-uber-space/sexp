@@ -84,6 +84,9 @@ inline static bool is_string(Expr exp)
     return expr_type(exp) == TYPE_STRING;
 }
 
+Expr make_string(char const * val);
+char const * string_value(Expr exp);
+
 Expr intern(char const * name);
 
 Expr cons(Expr a, Expr b);
@@ -261,8 +264,33 @@ void pair_set_second(Expr exp, Expr val)
     g_pairs[_pair_index(exp)].second = val;
 }
 
+#define MAX_STRINGS 100
+
+char * g_strings[MAX_STRINGS];
+u64 g_num_strings = 0;
+
+Expr make_string(char const * val)
+{
+    ASSERT(g_num_strings < MAX_STRINGS);
+    size_t len = strlen(val);
+    char * str = (char *) malloc(len + 1);
+    memcpy(str, val, len + 1);
+    u64 const index = g_num_strings++;
+    g_strings[index] = str;
+    return make_expr(TYPE_STRING, index);
+}
+
+char const * string_value(Expr exp)
+{
+    ASSERT(is_string(exp));
+    u64 const index = expr_data(exp);
+    ASSERT(index < g_num_strings);
+    return g_strings[index];
+}
+
 Expr intern(char const * name)
 {
+    //fprintf(stderr, "%s(\"%s\")\n", __FUNCTION__, name);
     if (!strcmp("nil", name))
     {
         return nil;

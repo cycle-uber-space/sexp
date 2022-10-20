@@ -139,6 +139,51 @@ static bool maybe_read_expr(Expr * pexp)
 
 static void render_expr(Expr exp);
 
+int g_indent = 0;
+int g_col = 0;
+int g_line = 0;
+
+static void emit_char(char ch)
+{
+    if (ch == '\n')
+    {
+        putc('\n', stdout);
+        g_col = 0;
+        g_line++;
+    }
+    else
+    {
+        if (g_col == 0)
+        {
+            for (int i = 0; i < g_indent; i++)
+            {
+                putc(' ', stdout);
+            }
+        }
+        putc(ch, stdout);
+        g_col++;
+    }
+}
+
+static void emit_str(char const * str)
+{
+    ASSERT_DEBUG(str);
+    for (char const * p = str; *p; p++)
+    {
+        emit_char(*p);
+    }
+}
+
+static void indent()
+{
+    g_indent += 2;
+}
+
+static void dedent()
+{
+    g_indent -= 2;
+}
+
 static void render_nil(Expr exp)
 {
     if (is_nil(exp))
@@ -147,14 +192,21 @@ static void render_nil(Expr exp)
     }
     else
     {
-        FAIL("cannot render expression of type %" PRIx64 "\n", expr_type(exp));
+        FAIL("cannot render expression %" PRIx64 "\n", exp);
     }
 }
 
 static void render_symbol(Expr exp)
 {
     ASSERT_DEBUG(is_symbol(exp));
-    printf("%s", symbol_name(exp));
+    emit_str(symbol_name(exp));
+}
+
+static void render_keyword(Expr exp)
+{
+    ASSERT_DEBUG(is_keyword(exp));
+    emit_char(':');
+    emit_str(keyword_name(exp));
 }
 
 static void render_pair(Expr exp)
@@ -163,16 +215,51 @@ static void render_pair(Expr exp)
     Expr head = car(exp);
     if (head == intern("object"))
     {
-        // TODO
-        printf("{...}");
+        Expr rest = cdr(exp);
+        if (rest)
+        {
+            emit_str("{\n");
+            indent();
+            while (rest)
+            {
+                Expr key = car(rest);
+                Expr val = cadr(rest);
+                if (is_keyword(key))
+                {
+                    emit_char('"');
+                    emit_str(keyword_name(key));
+                    emit_char('"');
+                    emit_char(':');
+                    emit_char(' ');
+                }
+                else
+                {
+                    FAIL("cannot render object key of type %" PRIx64 "\n", expr_type(key));
+                }
+                render_expr(val);
+                rest = cddr(rest);
+                if (rest)
+                {
+                    emit_char(',');
+                }
+                emit_char('\n');
+            }
+            dedent();
+            emit_char('}');
+            emit_char('\n');
+        }
+        else
+        {
+            emit_str("{}");
+        }
     }
     else if (head == intern("array"))
     {
-        printf("[");
+        emit_char('[');
         render_expr(head);
         for (Expr iter = cdr(exp); iter; iter = cdr(iter))
         {
-            printf(", ");
+            emit_str(", ");
             if (is_pair(iter))
             {
                 render_expr(car(iter));
@@ -183,7 +270,11 @@ static void render_pair(Expr exp)
                 break;
             }
         }
-        printf("]");
+        emit_char(']');
+    }
+    else
+    {
+        FAIL("cannot render pair %016" PRIx64 "\n", exp);
     }
 }
 
@@ -196,6 +287,9 @@ static void render_expr(Expr exp)
         break;
     case TYPE_SYMBOL:
         render_symbol(exp);
+        break;
+    case TYPE_KEYWORD:
+        render_keyword(exp);
         break;
     case TYPE_PAIR:
         render_pair(exp);
@@ -216,7 +310,7 @@ static void sexp2json()
     }
 
     render_expr(exp);
-    printf("\n");
+    emit_char('\n');
 }
 
 int main(int argc, char ** argv)

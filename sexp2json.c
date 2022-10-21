@@ -1,7 +1,6 @@
 
 #include "lisp.h"
 
-
 #include <inttypes.h>
 
 static bool is_whitespace(int ch)
@@ -462,14 +461,11 @@ static void render_expr(Expr exp)
 static void sexp2json()
 {
     Expr exp;
-    if (!maybe_read_expr(&exp))
+    while (maybe_read_expr(&exp))
     {
-        /* map empty stream => empty stream */
-        return;
+        render_expr(exp);
+        emit_char('\n');
     }
-
-    render_expr(exp);
-    emit_char('\n');
 }
 
 int main(int argc, char ** argv)

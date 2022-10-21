@@ -1,0 +1,57 @@
+{
+  "name": "main",
+  "return-type": "int",
+  "args": [
+    {
+      "type": {
+        "class": "simple-type",
+        "name": "int"
+      },
+      "name": "argc"
+    }, {
+      "type": {
+        "class": "pointer",
+        "to": {
+          "class": "pointer",
+          "to": {
+            "class": "simple-type",
+            "name": "char"
+          }
+        }
+      },
+      "name": "argv"
+    }
+  ],
+  "body": []
+}
+{
+  "name": "add",
+  "return-type": {
+    "class": "simple-type",
+    "name": "int"
+  },
+  "args": [
+    {
+      "type": {
+        "class": "simple-type",
+        "name": "int"
+      },
+      "name": "a"
+    }, {
+      "type": {
+        "class": "simple-type",
+        "name": "int"
+      },
+      "name": "b"
+    }
+  ],
+  "body": [
+    {
+      "class": "return-expr",
+      "expr": {
+        "class": "int-literal",
+        "value": "0"
+      }
+    }
+  ]
+}

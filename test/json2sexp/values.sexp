@@ -1,5 +1,9 @@
 (object)
 (array)
+(array
+  true
+  true
+  true)
 ""
 0
 true

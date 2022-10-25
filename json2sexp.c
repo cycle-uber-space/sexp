@@ -124,6 +124,57 @@ static Expr read_object()
     return cons(intern("object"), head);
 }
 
+static Expr read_array()
+{
+    //fprintf(stderr, "%s()\n", __FUNCTION__);
+    ASSERT(peek() == '[');
+    (void) advance();
+
+    Expr head = nil, tail = nil;
+    while (true)
+    {
+        skip_whitespace();
+        int ch = peek();
+        if (ch == ']')
+        {
+            (void) advance();
+            break;
+        }
+        else if (ch == -1)
+        {
+            FAIL("unexpected end of stream in %s()\n", __FUNCTION__);
+            return nil;
+        }
+        else
+        {
+            Expr val = read_value();
+            Expr next = cons(val, nil);
+            if (head)
+            {
+                rplacd(tail, next);
+                tail = next;
+            }
+            else
+            {
+                head = tail = next;
+            }
+
+            skip_whitespace();
+            bool have_comma = false;
+            if (peek() == ',')
+            {
+                have_comma = true;
+                advance();
+            }
+            if (have_comma && peek() == ']')
+            {
+                FAIL("unexpected ']' after ',' in %s()\n", __FUNCTION__);
+            }
+        }
+    }
+    return cons(intern("array"), head);
+}
+
 static char * _store(size_t size, char * buffer, char ch, char * pout)
 {
     //fprintf(stderr, "STORE: %c (%d)\n", ch, ch);
@@ -206,6 +257,21 @@ static bool is_symbol_char(int ch)
         return false;
     }
 
+    if (ch == '{' || ch == '}')
+    {
+        return false;
+    }
+
+    if (ch == '[' || ch == ']')
+    {
+        return false;
+    }
+
+    if (ch == ',')
+    {
+        return false;
+    }
+
     if (ch == '"')
     {
         return false;
@@ -244,6 +310,9 @@ static Expr read_value()
     {
     case '{':
         ret = read_object();
+        break;
+    case '[':
+        ret = read_array();
         break;
     case '"':
         ret = read_string();
@@ -374,7 +443,7 @@ static void render_pair(Expr exp)
         Expr rest = cdr(exp);
         if (rest)
         {
-            emit_str("[\n");
+            emit_str("(array\n");
             indent();
             for (Expr iter = rest; iter; iter = cdr(iter))
             {
@@ -389,15 +458,15 @@ static void render_pair(Expr exp)
                 }
                 if (cdr(iter))
                 {
-                    emit_str(", ");
+                    emit_str("\n");
                 }
             }
+            emit_str(")");
             dedent();
-            emit_str("\n]");
         }
         else
         {
-            emit_str("[]");
+            emit_str("(array)");
         }
     }
     else
